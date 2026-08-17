@@ -1,0 +1,384 @@
+/* =========================
+   RESET
+========================= */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f4f6;
+  color: #111;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+
+/* =========================
+   MAIN
+========================= */
+
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.app-header {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-header h1 {
+  margin: 0;
+  color: #111111;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.app-header nav {
+  display: flex;
+  gap: 10px;
+}
+
+
+/* =========================
+   BUTTONS
+========================= */
+
+button {
+  background: #333333;
+  color: #ffffff;
+
+  border: none;
+  border-radius: 5px;
+
+  padding: 9px 14px;
+
+  cursor: pointer;
+}
+
+button:hover {
+  background: #222222;
+}
+
+button:disabled {
+  background: #aaaaaa;
+  cursor: not-allowed;
+}
+
+
+/* =========================
+   ALERT
+========================= */
+
+.alert {
+  background: #fff3cd;
+  color: #664d03;
+
+  border: 1px solid #ffe69c;
+  border-radius: 6px;
+
+  padding: 10px 15px;
+  margin-bottom: 20px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+/* =========================
+   STATISTICS
+========================= */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: #ffffff;
+  color: #111111;
+
+  padding: 18px;
+  border-radius: 8px;
+
+  text-align: center;
+}
+
+.stat-label {
+  color: #555555;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  color: #111111;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+
+/* =========================
+   ORDERING LAYOUT
+========================= */
+
+.ordering-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+
+/* =========================
+   PANELS
+========================= */
+
+.panel-card {
+  background: #ffffff;
+  color: #111111;
+
+  padding: 20px;
+  border-radius: 8px;
+
+  margin-bottom: 20px;
+}
+
+.panel-card h2,
+.panel-card h3,
+.panel-card p,
+.panel-card label {
+  color: #111111;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 15px;
+}
+
+.panel-header h2 {
+  margin: 0;
+  color: #111111;
+  font-size: 22px;
+}
+
+
+/* =========================
+   MENU ITEMS
+========================= */
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.item-card {
+  background: #ffffff;
+  color: #111111;
+
+  border: 1px solid #d5d5d5;
+  border-radius: 7px;
+
+  padding: 15px;
+}
+
+.item-card h3 {
+  margin: 0 0 8px;
+
+  color: #111111;
+  font-size: 20px;
+}
+
+.item-card p {
+  margin: 5px 0;
+
+  color: #333333;
+}
+
+.quantity {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.quantity span {
+  min-width: 25px;
+
+  color: #111111;
+
+  text-align: center;
+  font-weight: bold;
+}
+
+
+/* =========================
+   BILLING CART
+========================= */
+
+.cart-row {
+  display: flex;
+  justify-content: space-between;
+
+  padding: 10px 0;
+
+  color: #111111;
+
+  border-bottom: 1px solid #eeeeee;
+}
+
+.cart-row span,
+.cart-row strong {
+  color: #111111;
+}
+
+
+/* =========================
+   FORMS
+========================= */
+
+.panel-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-card form label {
+  color: #111111;
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+
+  padding: 10px;
+
+  color: #111111;
+  background: #ffffff;
+
+  border: 1px solid #bbbbbb;
+  border-radius: 5px;
+
+  outline: none;
+}
+
+input:focus {
+  border-color: #333333;
+}
+
+input::placeholder {
+  color: #777777;
+}
+
+
+/* =========================
+   TOTAL
+========================= */
+
+.panel-card h2 {
+  color: #111111;
+}
+
+.panel-card hr {
+  border: none;
+  border-top: 1px solid #dddddd;
+
+  margin: 15px 0;
+}
+
+
+/* =========================
+   TABLE
+========================= */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+
+  color: #111111;
+}
+
+th,
+td {
+  padding: 10px;
+
+  color: #111111;
+
+  text-align: left;
+
+  border-bottom: 1px solid #dddddd;
+}
+
+th {
+  background: #f5f5f5;
+  font-weight: bold;
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 800px) {
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ordering-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .items-grid {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+
+@media (max-width: 500px) {
+
+  .app-container {
+    padding: 10px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-header h1 {
+    font-size: 20px;
+  }
+
+}
