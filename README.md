@@ -32,3 +32,8 @@ A simple restaurant order and billing management system built with React, Node.j
 cd frontend
 npm install
 npm run dev
+
+## Run Backend
+cd backend
+npm install
+node server.js
