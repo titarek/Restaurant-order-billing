@@ -164,7 +164,9 @@ app.post("/api/orders", async (req, res) => {
     }
 
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: "At least one item must be selected for the order" });
+      return res.status(400).json({
+        error: "At least one item must be selected for the order"
+      });
     }
 
     await connection.beginTransaction();
@@ -190,7 +192,9 @@ app.post("/api/orders", async (req, res) => {
       }
 
       if (item.stock < quantity) {
-        throw new Error(`Insufficient stock for ${item.name} (Available: ${item.stock})`);
+        throw new Error(
+          `Insufficient stock for ${item.name} (Available: ${item.stock})`
+        );
       }
 
       const subtotal = Number(item.price) * quantity;
@@ -207,15 +211,17 @@ app.post("/api/orders", async (req, res) => {
     }
 
     const [orderResult] = await connection.query(
-      "INSERT INTO orders (customer_name, total_amount) VALUES (?, ?)",
-      [customer_name.trim(), totalAmount]
+      "INSERT INTO orders (customer_name, total_amount, status) VALUES (?, ?, ?)",
+      [customer_name.trim(), totalAmount, "Pending"]
     );
 
     const orderId = orderResult.insertId;
 
     for (const item of verifiedItems) {
       await connection.query(
-        "INSERT INTO order_items (order_id, item_id, item_name, quantity, price, subtotal) VALUES (?, ?, ?, ?, ?, ?)",
+        `INSERT INTO order_items
+        (order_id, item_id, item_name, quantity, price, subtotal)
+        VALUES (?, ?, ?, ?, ?, ?)`,
         [
           orderId,
           item.item_id,
@@ -238,6 +244,7 @@ app.post("/api/orders", async (req, res) => {
       id: orderId,
       customer_name: customer_name.trim(),
       total_amount: totalAmount,
+      status: "Pending",
       items: verifiedItems
     });
   } catch (error) {
@@ -248,11 +255,88 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
+app.put("/api/orders/:id/served", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const [orders] = await db.query(
+      "SELECT * FROM orders WHERE id = ?",
+      [id]
+    );
+
+    if (orders.length === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    await db.query(
+      "UPDATE orders SET status = 'Served' WHERE id = ?",
+      [id]
+    );
+
+    res.json({ message: "Order marked as served" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/orders/:id", async (req, res) => {
+  const connection = await db.getConnection();
+
+  try {
+    const id = Number(req.params.id);
+    const reason = req.body.reason;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: "Delete reason is required" });
+    }
+
+    const [orders] = await connection.query(
+      "SELECT * FROM orders WHERE id = ?",
+      [id]
+    );
+
+    if (orders.length === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    await connection.beginTransaction();
+
+    await connection.query(
+      `INSERT INTO deleted_orders
+      (order_id, customer_name, total_amount, reason)
+      VALUES (?, ?, ?, ?)`,
+      [
+        id,
+        orders[0].customer_name,
+        orders[0].total_amount,
+        reason.trim()
+      ]
+    );
+
+    await connection.query(
+      "DELETE FROM orders WHERE id = ?",
+      [id]
+    );
+
+    await connection.commit();
+
+    res.json({ message: "Order deleted successfully" });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ error: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
 app.get("/api/summary", async (req, res) => {
   try {
     const [sales] = await db.query(`
-      SELECT COALESCE(SUM(total_amount), 0) AS totalRevenue, COUNT(*) AS totalOrders
+      SELECT
+        COALESCE(SUM(total_amount), 0) AS totalRevenue,
+        COUNT(*) AS totalOrders
       FROM orders
+      WHERE status != 'Deleted'
     `);
 
     const [items] = await db.query(`
@@ -261,8 +345,9 @@ app.get("/api/summary", async (req, res) => {
     `);
 
     const [stock] = await db.query(`
-      SELECT COUNT(*) AS totalMenuItems,
-      SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END) AS outOfStockCount
+      SELECT
+        COUNT(*) AS totalMenuItems,
+        SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END) AS outOfStockCount
       FROM menu_items
     `);
 
@@ -273,6 +358,42 @@ app.get("/api/summary", async (req, res) => {
       totalMenuItems: Number(stock[0].totalMenuItems),
       outOfStockCount: Number(stock[0].outOfStockCount || 0)
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/history", async (req, res) => {
+  try {
+    const [orders] = await db.query(`
+      SELECT *
+      FROM orders
+      WHERE status = 'Served'
+      ORDER BY id DESC
+    `);
+
+    for (const order of orders) {
+      const [items] = await db.query(
+        "SELECT * FROM order_items WHERE order_id = ?",
+        [order.id]
+      );
+
+      order.items = items;
+    }
+
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/deleted-orders", async (req, res) => {
+  try {
+    const [orders] = await db.query(
+      "SELECT * FROM deleted_orders ORDER BY id DESC"
+    );
+
+    res.json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
