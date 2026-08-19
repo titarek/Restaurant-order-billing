@@ -1,407 +1,670 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 const API = "http://localhost:5000/api";
 
-const bdt = amount => `৳${Number(amount || 0).toFixed(2)}`;
-
-async function api(path, options = {}) {
-  const response = await fetch(`${API}${path}`, {
-    method: options.method || "GET",
-    headers: { "Content-Type": "application/json" },
-    body: options.body ? JSON.stringify(options.body) : undefined
-  });
-
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Request failed");
-  return data;
-}
-
-function QuickStats({ summary }) {
-  return (
-    <div className="stats-grid">
-      <div className="stat-card">
-        <div className="stat-label">Total Revenue</div>
-        <div className="stat-value">{bdt(summary.totalRevenue)}</div>
-      </div>
-
-      <div className="stat-card">
-        <div className="stat-label">Orders Placed</div>
-        <div className="stat-value">{summary.totalOrders || 0}</div>
-      </div>
-
-      <div className="stat-card">
-        <div className="stat-label">Items Sold</div>
-        <div className="stat-value">{summary.totalItemsSold || 0}</div>
-      </div>
-
-      <div className="stat-card">
-        <div className="stat-label">Out of Stock</div>
-        <div className="stat-value">{summary.outOfStockCount || 0}</div>
-      </div>
-    </div>
-  );
-}
-
-function MenuItem({ item, quantity, onChange }) {
-  const outOfStock = item.stock === 0;
-
-  return (
-    <div className="item-card">
-      <h3>{item.name}</h3>
-      <p>{bdt(item.price)}</p>
-      <p>{outOfStock ? "Stock Out" : `${item.stock} in stock`}</p>
-
-      <div className="quantity">
-        <button onClick={() => onChange(item.id, quantity - 1)} disabled={quantity === 0}>-</button>
-        <span>{quantity}</span>
-        <button onClick={() => onChange(item.id, quantity + 1)} disabled={outOfStock || quantity >= item.stock}>+</button>
-      </div>
-    </div>
-  );
-}
-
-function BillingCart({ items, cart, customerName, setCustomerName, onOrder, onClear, submitting }) {
-  const selectedItems = Object.entries(cart).map(([id, quantity]) => {
-    const item = items.find(item => item.id === Number(id));
-    if (!item || quantity <= 0) return null;
-    return { ...item, quantity, subtotal: item.price * quantity };
-  }).filter(Boolean);
-
-  const total = selectedItems.reduce((sum, item) => sum + item.subtotal, 0);
-
-  function handleSubmit(event) {
-    event.preventDefault();
-
-    if (!customerName.trim() || selectedItems.length === 0) return;
-
-    onOrder({
-      customer_name: customerName.trim(),
-      items: selectedItems.map(item => ({ item_id: item.id, quantity: item.quantity }))
-    });
-  }
-
-  return (
-    <div className="panel-card">
-      <h2>Current Order & Bill</h2>
-
-      <form onSubmit={handleSubmit}>
-        <label>Customer Name</label>
-        <input value={customerName} onChange={event => setCustomerName(event.target.value)} placeholder="Enter customer name" required />
-
-        <h3>Selected Items</h3>
-
-        {selectedItems.length === 0 ? (
-          <p>No items selected.</p>
-        ) : (
-          selectedItems.map(item => (
-            <div className="cart-row" key={item.id}>
-              <span>{item.name}<br />{item.quantity} × {bdt(item.price)}</span>
-              <strong>{bdt(item.subtotal)}</strong>
-            </div>
-          ))
-        )}
-
-        <hr />
-        <h2>Total: {bdt(total)}</h2>
-
-        {selectedItems.length > 0 && (
-          <>
-            <button type="submit" disabled={submitting || !customerName.trim()}>
-              {submitting ? "Processing..." : "Place Order & Bill"}
-            </button>
-
-            <button type="button" onClick={onClear}>Clear Cart</button>
-          </>
-        )}
-      </form>
-    </div>
-  );
-}
-
-function SalesHistory({ orders, onRefresh }) {
-  return (
-    <div className="panel-card">
-      <div className="panel-header">
-        <h2>Sales & Order History</h2>
-        <button onClick={onRefresh}>Refresh</button>
-      </div>
-
-      {orders.length === 0 ? (
-        <p>No orders recorded yet.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Order</th>
-              <th>Customer</th>
-              <th>Items</th>
-              <th>Date</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {orders.map(order => (
-              <tr key={order.id}>
-                <td>#{order.id}</td>
-                <td>{order.customer_name}</td>
-                <td>
-                  {order.items?.map(item => (
-                    <div key={item.id}>{item.quantity} × {item.item_name}</div>
-                  ))}
-                </td>
-                <td>{order.created_at ? new Date(order.created_at).toLocaleString() : ""}</td>
-                <td>{bdt(order.total_amount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
-function ManagerView({ items, onAdd, onStockChange, onDelete, onBack }) {
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("");
-
-  function handleSubmit(event) {
-    event.preventDefault();
-
-    onAdd({
-      name: name.trim(),
-      price: Number(price),
-      stock: Number(stock)
-    });
-
-    setName("");
-    setPrice("");
-    setStock("");
-  }
-
-  return (
-    <div className="panel-card">
-      <div className="panel-header">
-        <h2>Manager / Inventory</h2>
-        <button onClick={onBack}>Back to Ordering</button>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <h3>Add Menu Item</h3>
-
-        <input placeholder="Item name" value={name} onChange={e => setName(e.target.value)} required />
-        <input type="number" placeholder="Price" min="1" value={price} onChange={e => setPrice(e.target.value)} required />
-        <input type="number" placeholder="Stock" min="0" value={stock} onChange={e => setStock(e.target.value)} required />
-
-        <button type="submit">Add Item</button>
-      </form>
-
-      <h3>Inventory</h3>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Price</th>
-            <th>Stock</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {items.map(item => (
-            <tr key={item.id}>
-              <td>{item.name}</td>
-              <td>{bdt(item.price)}</td>
-              <td>{item.stock}</td>
-              <td>
-                <button onClick={() => onStockChange(item.id, Math.max(0, item.stock - 1))}>-1</button>
-                <button onClick={() => onStockChange(item.id, item.stock + 5)}>+5</button>
-                <button onClick={() => onStockChange(item.id, item.stock + 10)}>+10</button>
-                <button onClick={() => onDelete(item.id)}>Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-export default function App() {
-  const [page, setPage] = useState("ordering");
+function App() {
   const [items, setItems] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [summary, setSummary] = useState({});
-  const [cart, setCart] = useState({});
+  const [history, setHistory] = useState([]);
+  const [summary, setSummary] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalItemsSold: 0,
+    totalMenuItems: 0,
+    outOfStockCount: 0
+  });
+
+  const [cart, setCart] = useState([]);
   const [customerName, setCustomerName] = useState("");
+  const [activePage, setActivePage] = useState("orders");
+  const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
-  async function loadData() {
-    try {
-      const [itemData, orderData, summaryData] = await Promise.all([
-        api("/items"),
-        api("/orders"),
-        api("/summary")
-      ]);
+  const [newItem, setNewItem] = useState({
+    name: "",
+    price: "",
+    stock: ""
+  });
 
-      setItems(itemData);
-      setOrders(orderData);
-      setSummary(summaryData);
-    } catch (error) {
-      setMessage(error.message);
-    }
-  }
+  const [stockValues, setStockValues] = useState({});
 
   useEffect(() => {
     loadData();
   }, []);
 
-  function changeQuantity(id, quantity) {
-    setCart(oldCart => {
-      const newCart = { ...oldCart };
+  const loadData = async () => {
+    try {
+      const [itemsRes, ordersRes, summaryRes, historyRes] = await Promise.all([
+        fetch(`${API}/items`),
+        fetch(`${API}/orders`),
+        fetch(`${API}/summary`),
+        fetch(`${API}/history`)
+      ]);
 
-      if (quantity <= 0) {
-        delete newCart[id];
-      } else {
-        newCart[id] = quantity;
+      setItems(await itemsRes.json());
+      setOrders(await ordersRes.json());
+      setSummary(await summaryRes.json());
+      setHistory(await historyRes.json());
+    } catch {
+      setError("Unable to connect to the server.");
+    }
+  };
+
+  const addToCart = (item) => {
+    if (item.stock <= 0) return;
+
+    const existing = cart.find((x) => x.item_id === item.id);
+
+    if (existing) {
+      if (existing.quantity >= item.stock) return;
+
+      setCart(
+        cart.map((x) =>
+          x.item_id === item.id
+            ? { ...x, quantity: x.quantity + 1 }
+            : x
+        )
+      );
+    } else {
+      setCart([
+        ...cart,
+        {
+          item_id: item.id,
+          name: item.name,
+          price: Number(item.price),
+          quantity: 1
+        }
+      ]);
+    }
+  };
+
+  const changeQuantity = (id, amount) => {
+    const item = items.find((x) => x.id === id);
+
+    setCart(
+      cart
+        .map((x) =>
+          x.item_id === id
+            ? { ...x, quantity: x.quantity + amount }
+            : x
+        )
+        .filter((x) => x.quantity > 0)
+        .map((x) => {
+          if (item && x.quantity > item.stock) {
+            return { ...x, quantity: item.stock };
+          }
+          return x;
+        })
+    );
+  };
+
+  const total = cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  const placeOrder = async (e) => {
+    e.preventDefault();
+
+    if (!customerName.trim()) {
+      setError("Customer name is required.");
+      return;
+    }
+
+    if (cart.length === 0) {
+      setError("Please select at least one item.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API}/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer_name: customerName,
+          items: cart
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error);
+        return;
       }
 
-      return newCart;
-    });
-  }
-
-  async function placeOrder(order) {
-    setSubmitting(true);
-    setMessage("");
-
-    try {
-      const newOrder = await api("/orders", {
-        method: "POST",
-        body: order
-      });
-
-      setMessage(`Order #${newOrder.id} placed successfully. Total: ${bdt(newOrder.total_amount)}`);
-      setCart({});
+      setCart([]);
       setCustomerName("");
-      await loadData();
-    } catch (error) {
-      setMessage(error.message);
-    } finally {
-      setSubmitting(false);
+      setMessage("Order placed successfully.");
+      setError("");
+      loadData();
+    } catch {
+      setError("Unable to place order.");
     }
-  }
+  };
 
-  async function addItem(item) {
+  const addItem = async (e) => {
+    e.preventDefault();
+
     try {
-      await api("/items", {
+      const response = await fetch(`${API}/items`, {
         method: "POST",
-        body: item
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newItem)
       });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error);
+        return;
+      }
+
+      setNewItem({ name: "", price: "", stock: "" });
       setMessage("Menu item added.");
-      await loadData();
-    } catch (error) {
-      setMessage(error.message);
+      setError("");
+      loadData();
+    } catch {
+      setError("Unable to add item.");
     }
-  }
+  };
 
-  async function updateStock(id, stock) {
+  const updateStock = async (id) => {
     try {
-      await api(`/items/${id}/stock`, {
+      const response = await fetch(`${API}/items/${id}/stock`, {
         method: "PUT",
-        body: { stock }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stock: stockValues[id]
+        })
       });
 
-      await loadData();
-    } catch (error) {
-      setMessage(error.message);
-    }
-  }
+      const data = await response.json();
 
-  async function deleteItem(id) {
+      if (!response.ok) {
+        setError(data.error);
+        return;
+      }
+
+      setMessage("Stock updated.");
+      setError("");
+      loadData();
+    } catch {
+      setError("Unable to update stock.");
+    }
+  };
+
+  const markServed = async (id) => {
     try {
-      await api(`/items/${id}`, {
-        method: "DELETE"
+      const response = await fetch(`${API}/orders/${id}/served`, {
+        method: "PUT"
       });
 
-      setMessage("Menu item deleted.");
-      await loadData();
-    } catch (error) {
-      setMessage(error.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error);
+        return;
+      }
+
+      setMessage("Order marked as served.");
+      setError("");
+      loadData();
+    } catch {
+      setError("Unable to update order.");
     }
-  }
+  };
+
+  const deleteOrder = async (id) => {
+    const reason = window.prompt("Why are you deleting this order?");
+
+    if (!reason || !reason.trim()) return;
+
+    try {
+      const response = await fetch(`${API}/orders/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error);
+        return;
+      }
+
+      setMessage("Order deleted.");
+      setError("");
+      loadData();
+    } catch {
+      setError("Unable to delete order.");
+    }
+  };
 
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>🍔 Restaurant Order & Billing</h1>
+        <h1>Restaurant Order & Billing</h1>
 
         <nav>
-          <button onClick={() => setPage("ordering")}>Order & Billing</button>
-          <button onClick={() => setPage("manager")}>Manager</button>
+          <button
+            className={activePage === "orders" ? "active" : ""}
+            onClick={() => setActivePage("orders")}
+          >
+            Orders
+          </button>
+
+          <button
+            className={activePage === "menu" ? "active" : ""}
+            onClick={() => setActivePage("menu")}
+          >
+            Menu
+          </button>
+
+          <button
+            className={activePage === "stock" ? "active" : ""}
+            onClick={() => setActivePage("stock")}
+          >
+            Stock
+          </button>
+
+          <button
+            className={activePage === "sales" ? "active" : ""}
+            onClick={() => setActivePage("sales")}
+          >
+            Sales
+          </button>
+
+          <button
+            className={activePage === "history" ? "active" : ""}
+            onClick={() => setActivePage("history")}
+          >
+            Order History
+          </button>
         </nav>
       </header>
 
+      {error && (
+        <div className="alert error">
+          <span>{error}</span>
+          <button onClick={() => setError("")}>×</button>
+        </div>
+      )}
+
       {message && (
-        <div className="alert">
-          {message}
+        <div className="alert success">
+          <span>{message}</span>
           <button onClick={() => setMessage("")}>×</button>
         </div>
       )}
 
-      <QuickStats summary={summary} />
-
-      {page === "ordering" ? (
+      {activePage === "orders" && (
         <>
-          <main className="ordering-layout">
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-label">Revenue</div>
+              <div className="stat-value">৳{summary.totalRevenue.toFixed(2)}</div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">Orders</div>
+              <div className="stat-value">{summary.totalOrders}</div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">Items Sold</div>
+              <div className="stat-value">{summary.totalItemsSold}</div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">Out of Stock</div>
+              <div className="stat-value">{summary.outOfStockCount}</div>
+            </div>
+          </div>
+
+          <div className="ordering-layout">
             <section className="panel-card">
               <div className="panel-header">
-                <h2>Menu Items</h2>
-                <button onClick={() => setPage("manager")}>+ Add Item</button>
+                <h2>Menu</h2>
               </div>
 
               <div className="items-grid">
-                {items.length === 0 ? (
-                  <p>No menu items found.</p>
-                ) : (
-                  items.map(item => (
-                    <MenuItem
-                      key={item.id}
-                      item={item}
-                      quantity={cart[item.id] || 0}
-                      onChange={changeQuantity}
-                    />
-                  ))
-                )}
+                {items.map((item) => (
+                  <div className="item-card" key={item.id}>
+                    <h3>{item.name}</h3>
+                    <p>Price: ৳{Number(item.price).toFixed(2)}</p>
+                    <p>
+                      Stock:{" "}
+                      <strong className={item.stock === 0 ? "out-stock" : ""}>
+                        {item.stock}
+                      </strong>
+                    </p>
+
+                    <button
+                      onClick={() => addToCart(item)}
+                      disabled={item.stock === 0}
+                    >
+                      {item.stock === 0 ? "Out of Stock" : "Add to Order"}
+                    </button>
+                  </div>
+                ))}
               </div>
             </section>
 
-            <BillingCart
-              items={items}
-              cart={cart}
-              customerName={customerName}
-              setCustomerName={setCustomerName}
-              onOrder={placeOrder}
-              onClear={() => setCart({})}
-              submitting={submitting}
-            />
-          </main>
+            <section className="panel-card">
+              <div className="panel-header">
+                <h2>Billing</h2>
+              </div>
 
-          <SalesHistory orders={orders} onRefresh={loadData} />
+              <form onSubmit={placeOrder}>
+                <label>Customer Name</label>
+
+                <input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Enter customer name"
+                />
+
+                <div className="cart">
+                  {cart.length === 0 ? (
+                    <p className="empty">No items selected.</p>
+                  ) : (
+                    cart.map((item) => (
+                      <div className="cart-row" key={item.item_id}>
+                        <div>
+                          <strong>{item.name}</strong>
+                          <small>
+                            ৳{item.price.toFixed(2)} × {item.quantity}
+                          </small>
+                        </div>
+
+                        <div className="quantity">
+                          <button
+                            type="button"
+                            onClick={() => changeQuantity(item.item_id, -1)}
+                          >
+                            -
+                          </button>
+
+                          <span>{item.quantity}</span>
+
+                          <button
+                            type="button"
+                            onClick={() => changeQuantity(item.item_id, 1)}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <hr />
+
+                <div className="bill-total">
+                  <span>Total</span>
+                  <strong>৳{total.toFixed(2)}</strong>
+                </div>
+
+                <button className="place-button" type="submit">
+                  Place Order
+                </button>
+              </form>
+            </section>
+          </div>
+
+          <section className="panel-card current-orders">
+            <div className="panel-header">
+              <h2>Current Orders</h2>
+              <span>{orders.filter((o) => o.status === "Pending").length} pending</span>
+            </div>
+
+            {orders.filter((o) => o.status === "Pending").length === 0 ? (
+              <p className="empty">No current orders.</p>
+            ) : (
+              <div className="orders-list">
+                {orders
+                  .filter((order) => order.status === "Pending")
+                  .map((order) => (
+                    <div className="order-card" key={order.id}>
+                      <div className="order-info">
+                        <strong>Order #{order.id}</strong>
+                        <span>{order.customer_name}</span>
+
+                        <div className="order-items">
+                          {order.items.map((item) => (
+                            <span key={item.id}>
+                              {item.item_name} × {item.quantity}
+                            </span>
+                          ))}
+                        </div>
+
+                        <strong>৳{Number(order.total_amount).toFixed(2)}</strong>
+                      </div>
+
+                      <div className="order-actions">
+                        <button
+                          className="served-button"
+                          onClick={() => markServed(order.id)}
+                        >
+                          Served
+                        </button>
+
+                        <button
+                          className="delete-button"
+                          onClick={() => deleteOrder(order.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </section>
         </>
-      ) : (
-        <ManagerView
-          items={items}
-          onAdd={addItem}
-          onStockChange={updateStock}
-          onDelete={deleteItem}
-          onBack={() => setPage("ordering")}
-        />
+      )}
+
+      {activePage === "menu" && (
+        <section className="panel-card">
+          <div className="panel-header">
+            <h2>Add Menu Item</h2>
+          </div>
+
+          <form onSubmit={addItem} className="add-item-form">
+            <input
+              placeholder="Item name"
+              value={newItem.name}
+              onChange={(e) =>
+                setNewItem({ ...newItem, name: e.target.value })
+              }
+            />
+
+            <input
+              type="number"
+              placeholder="Price"
+              value={newItem.price}
+              onChange={(e) =>
+                setNewItem({ ...newItem, price: e.target.value })
+              }
+            />
+
+            <input
+              type="number"
+              placeholder="Stock"
+              value={newItem.stock}
+              onChange={(e) =>
+                setNewItem({ ...newItem, stock: e.target.value })
+              }
+            />
+
+            <button type="submit">Add Item</button>
+          </form>
+
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Item</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.id}</td>
+                    <td>{item.name}</td>
+                    <td>৳{Number(item.price).toFixed(2)}</td>
+                    <td>{item.stock}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {activePage === "stock" && (
+        <section className="panel-card">
+          <div className="panel-header">
+            <h2>Stock Management</h2>
+          </div>
+
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Current Stock</th>
+                  <th>New Stock</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.name}</td>
+                    <td>{item.stock}</td>
+                    <td>
+                      <input
+                        type="number"
+                        min="0"
+                        value={
+                          stockValues[item.id] !== undefined
+                            ? stockValues[item.id]
+                            : item.stock
+                        }
+                        onChange={(e) =>
+                          setStockValues({
+                            ...stockValues,
+                            [item.id]: e.target.value
+                          })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <button onClick={() => updateStock(item.id)}>
+                        Update
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {activePage === "sales" && (
+        <section className="panel-card">
+          <div className="panel-header">
+            <h2>Sales Summary</h2>
+          </div>
+
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-label">Total Revenue</div>
+              <div className="stat-value">
+                ৳{summary.totalRevenue.toFixed(2)}
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">Total Orders</div>
+              <div className="stat-value">{summary.totalOrders}</div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">Items Sold</div>
+              <div className="stat-value">{summary.totalItemsSold}</div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">Menu Items</div>
+              <div className="stat-value">{summary.totalMenuItems}</div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activePage === "history" && (
+        <section className="panel-card">
+          <div className="panel-header">
+            <h2>Order History</h2>
+          </div>
+
+          {history.length === 0 ? (
+            <p className="empty">No served orders yet.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Order</th>
+                    <th>Customer</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {history.map((order) => (
+                    <tr key={order.id}>
+                      <td>#{order.id}</td>
+                      <td>{order.customer_name}</td>
+                      <td>
+                        {order.items.map((item) => (
+                          <div key={item.id}>
+                            {item.item_name} × {item.quantity}
+                          </div>
+                        ))}
+                      </td>
+                      <td>৳{Number(order.total_amount).toFixed(2)}</td>
+                      <td>
+                        <span className="status served">Served</span>
+                      </td>
+                      <td>
+                        {new Date(order.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       )}
     </div>
   );
 }
+
+export default App;
