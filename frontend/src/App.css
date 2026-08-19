@@ -1,6 +1,4 @@
-/* =========================
-   RESET
-========================= */
+ 
 
 * {
   box-sizing: border-box;
@@ -18,10 +16,7 @@ input {
   font: inherit;
 }
 
-
-/* =========================
-   MAIN
-========================= */
+ 
 
 .app-container {
   max-width: 1200px;
@@ -29,10 +24,7 @@ input {
   padding: 20px;
 }
 
-
-/* =========================
-   HEADER
-========================= */
+ 
 
 .app-header {
   background: #ffffff;
@@ -57,10 +49,7 @@ input {
   gap: 10px;
 }
 
-
-/* =========================
-   BUTTONS
-========================= */
+ 
 
 button {
   background: #333333;
@@ -82,11 +71,7 @@ button:disabled {
   background: #aaaaaa;
   cursor: not-allowed;
 }
-
-
-/* =========================
-   ALERT
-========================= */
+ 
 
 .alert {
   background: #fff3cd;
@@ -103,10 +88,7 @@ button:disabled {
   align-items: center;
 }
 
-
-/* =========================
-   STATISTICS
-========================= */
+ 
 
 .stats-grid {
   display: grid;
@@ -138,10 +120,7 @@ button:disabled {
   font-weight: bold;
 }
 
-
-/* =========================
-   ORDERING LAYOUT
-========================= */
+ 
 
 .ordering-layout {
   display: grid;
@@ -149,10 +128,7 @@ button:disabled {
   gap: 20px;
 }
 
-
-/* =========================
-   PANELS
-========================= */
+ 
 
 .panel-card {
   background: #ffffff;
@@ -184,11 +160,7 @@ button:disabled {
   color: #111111;
   font-size: 22px;
 }
-
-
-/* =========================
-   MENU ITEMS
-========================= */
+ 
 
 .items-grid {
   display: grid;
@@ -236,10 +208,7 @@ button:disabled {
   font-weight: bold;
 }
 
-
-/* =========================
-   BILLING CART
-========================= */
+ 
 
 .cart-row {
   display: flex;
@@ -258,9 +227,7 @@ button:disabled {
 }
 
 
-/* =========================
-   FORMS
-========================= */
+ 
 
 .panel-card form {
   display: flex;
@@ -296,9 +263,7 @@ input::placeholder {
 }
 
 
-/* =========================
-   TOTAL
-========================= */
+ 
 
 .panel-card h2 {
   color: #111111;
@@ -311,10 +276,7 @@ input::placeholder {
   margin: 15px 0;
 }
 
-
-/* =========================
-   TABLE
-========================= */
+ 
 
 table {
   width: 100%;
@@ -339,10 +301,7 @@ th {
   font-weight: bold;
 }
 
-
-/* =========================
-   MOBILE
-========================= */
+ 
 
 @media (max-width: 800px) {
 
